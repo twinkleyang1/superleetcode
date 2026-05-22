@@ -15,8 +15,16 @@ export default function History() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [activeChart, setActiveChart] = useState<ChartType>('heatmap')
   const [filterCategory, setFilterCategory] = useState('全部')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 30)
+    return d.toISOString().split('T')[0]
+  })
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]
+  })
 
   useEffect(() => {
     loadData()

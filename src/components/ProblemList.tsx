@@ -140,7 +140,7 @@ export default function ProblemList() {
                   >
                     {p.title}
                   </a>
-                  {p.isCustom && <span className="text-xs text-slate-500 ml-2">自定义</span>}
+                  {p.isCustom ? <span className="text-xs text-slate-500 ml-2">自定义</span> : null}
                 </td>
                 <td className="px-4 py-2.5 text-slate-400">{p.category}</td>
                 <td className="px-4 py-2.5">
