@@ -1,98 +1,94 @@
-# Browser + Electron + SQLite Architecture Refactor
+# 浏览器 + Electron 后台 + SQLite 架构重构
 
-## Context
+## 背景
 
-Current architecture runs React inside an Electron BrowserWindow with IndexedDB + JSON file dual storage. User wants:
+当前架构是 React 跑在 Electron 窗口里，数据用 IndexedDB + JSON 文件双重存储。用户想要：
 
-1. **Browser-first UI** — open in Chrome, not Electron window
-2. **Durable local storage** — data on disk, won't be lost by clearing browser cache
-3. **Electron background services** — system tray, auto-launch, Windows notifications
-4. **Browser controls Electron** — settings changes in browser propagate to Electron
+1. **浏览器优先** — 在 Chrome 里打开，不走 Electron 窗口
+2. **本地磁盘存储** — 数据存磁盘，清浏览器缓存不会丢失
+3. **Electron 后台服务** — 保留系统托盘、开机自启、Windows 通知
+4. **浏览器控制 Electron** — 网页里的设置能传到 Electron（自启、提醒等）
 
-## Architecture
+## 架构
 
 ```
-Browser (Chrome)                    Electron (background)
+浏览器 (Chrome)                     Electron (后台)
 ┌─────────────────────┐    HTTP    ┌──────────────────────┐
 │ React + Vite         │◄─────────►│ Express :3456         │
 │ Dexie.js (IndexedDB) │           │ better-sqlite3        │
-│ - Primary data store │           │ - Durable disk store  │
-│ - Always available   │           │ - System tray         │
-└─────────────────────┘           │ - Auto-launch         │
-                                   │ - Notifications       │
+│ - 主存储，快速读写     │           │ - 磁盘持久存储         │
+│ - 随时可用            │           │ - 系统托盘            │
+└─────────────────────┘           │ - 开机自启            │
+                                   │ - 定时通知            │
                                    └──────────────────────┘
 ```
 
-**Key principle**: Components do NOT change their data access pattern. They continue using `db.*` (Dexie/IndexedDB). A thin sync layer in App.tsx handles bidirectional sync with Electron when available.
+**核心原则**：组件不改数据访问方式，继续用 `db.*`（Dexie/IndexedDB）。只在 App.tsx 加一层薄薄的同步逻辑——Electron 在线时自动双向同步。
 
-## Data Flow
+## 数据流
 
-### Startup (Electron running)
-1. Browser: `GET /api/data` → receive full SQLite dataset
-2. Browser: `syncFromJSON(data)` → populate IndexedDB (existing function)
-3. App renders normally with IndexedDB data
+### 启动时
+1. `npm start` → Vite 打开浏览器 + Electron 后台启动
+2. 浏览器调用 `GET /api/data` → 拿到 SQLite 全量数据
+3. 浏览器执行 `syncFromJSON(data)` → 写入 IndexedDB（复用现有函数）
+4. 正常渲染页面
 
-### Startup (no Electron)
-1. Browser: API call fails silently
-2. App uses existing IndexedDB data
-3. All functionality works normally
+### 使用中
+1. 用户操作 → 组件写入 IndexedDB（`db.*`）— 毫秒级响应
+2. 写入后自动 `exportToJSON()` → `POST /api/data` → 写 SQLite 磁盘
+3. 每 30 秒自动保存一次做兜底
 
-### During use (Electron running)
-1. User performs action → component writes to IndexedDB via `db.*`
-2. After write: `exportToJSON()` → `POST /api/data` → SQLite updated
-3. Auto-save: every 30s, `exportToJSON()` → `POST /api/data`
+### 如果只开了浏览器（Electron 没启动）
+1. API 调用静默失败，不报错
+2. 直接用 IndexedDB 数据，所有功能正常
+3. 数据暂存 IndexedDB，下次 `npm start` 时自动同步
 
-### During use (no Electron)
-1. User performs action → component writes to IndexedDB
-2. API call skipped (no Electron)
-3. Data stays in IndexedDB until Electron next starts
+### 冲突处理
+最后写入生效。单用户单设备，实际不会出现冲突。
 
-### Conflict resolution
-Last-write-wins. Single user, single device — conflicts won't happen in practice.
+## API 路由
 
-## API Routes
+| 方法 | 路径 | 请求体 | 响应 | 用途 |
+|------|------|--------|------|------|
+| GET | /api/data | — | AppData 全量 | 从 SQLite 拉数据到浏览器 |
+| POST | /api/data | AppData 全量 | { success: true } | 浏览器数据推到 SQLite |
+| GET | /api/settings | — | Settings | 读取设置 |
+| PUT | /api/settings | Settings | { success: true } | 更新设置 + 开机自启 |
+| POST | /api/quit | — | { success: true } | 退出 Electron |
 
-| Method | Path | Request | Response | Purpose |
-|--------|------|---------|----------|---------|
-| GET | /api/data | — | AppData (full) | Pull SQLite into IndexedDB |
-| POST | /api/data | AppData (full) | { success: true } | Push IndexedDB into SQLite |
-| GET | /api/settings | — | Settings | Read settings |
-| PUT | /api/settings | Settings | { success: true } | Update settings + autoLaunch |
-| POST | /api/quit | — | { success: true } | Quit Electron |
+## 文件改动
 
-## File Changes
+### 新增文件
+- `electron/server.ts` — Express 服务器 + API 路由 + SQLite 操作
+- `src/api.ts` — fetch 封装，浏览器调用 Electron API 的客户端
 
-### New files
-- `electron/server.ts` — Express server with all API routes + SQLite queries
-- `src/api.ts` — fetch wrapper for talking to Electron API
+### 修改文件
+| 文件 | 改动 |
+|------|------|
+| `electron/main.ts` | 去掉 BrowserWindow。启动时开启 Express 服务器。保留托盘、自启、通知、提醒定时器。 |
+| `electron/store.ts` | JSON 文件读写改成 SQLite（better-sqlite3）。接口保持不变（readData/writeData/readSettings/writeSettings）。加数据库初始化和建表。首次启动自动填充 100 题。 |
+| `electron/preload.ts` | 精简，去掉大部分 IPC 处理。只留通知推送监听。 |
+| `src/App.tsx` | `window.electronAPI.getData()` 替换为 `api.getData()`。`window.electronAPI.saveData()` 替换为 `api.saveData()`。保留 IndexedDB 初始化逻辑。Electron 不在时静默失败。 |
+| `src/components/SettingsPanel.tsx` | `window.electronAPI.saveSettings()` / `setAutoLaunch()` / `quitApp()` 替换为 `api.updateSettings()` / `api.quit()`。保留 `db.settings.put()`。 |
+| `src/components/RatingModal.tsx` | IndexedDB 写入后加 `api.saveData(data)`（Electron 不在则静默失败）。 |
+| `src/components/AddProblemModal.tsx` | 同上。 |
+| `src/components/ProblemList.tsx` | 同上。 |
+| `package.json` | 加 `express`、`cors`、`better-sqlite3`。更新 scripts。 |
 
-### Modified files
-| File | Changes |
-|------|---------|
-| `electron/main.ts` | Remove BrowserWindow creation. Start Express server on startup. Keep tray, auto-launch, notifications, reminder timer. Add `shell.openExternal` for opening browser. |
-| `electron/store.ts` | Replace JSON fs read/write with SQLite (better-sqlite3). Same readData/writeData/readSettings/writeSettings interface. Add database initialization (CREATE TABLE). Call initializeData (seed) if problems table is empty. |
-| `electron/preload.ts` | Remove most IPC handlers. Keep only `onNotificationReminder` listener for push notifications to renderer. |
-| `src/App.tsx` | Replace `window.electronAPI.getData()` with `api.getData()`. Replace `window.electronAPI.saveData()` with `api.saveData()`. Keep IndexedDB initialization flow. Add silent failure when Electron unavailable. |
-| `src/components/SettingsPanel.tsx` | Replace `window.electronAPI.saveSettings()` / `setAutoLaunch()` / `quitApp()` with `api.updateSettings()` / `api.quit()`. Keep `db.settings.put()` for local save. |
-| `src/components/RatingModal.tsx` | Add `api.saveData(data)` call after IndexedDB write (silent fail if no Electron). |
-| `src/components/AddProblemModal.tsx` | Same — add `api.saveData(data)` after write. |
-| `src/components/ProblemList.tsx` | Same — add `api.saveData(data)` after level update. |
-| `package.json` | Add `express`, `cors`, `better-sqlite3`. Update scripts. |
+### 不改的文件
+- `src/db.ts` — IndexedDB 结构不变
+- `src/types.ts` — 类型不变
+- `src/seed.ts` — `initializeData()`、`syncFromJSON()`、`exportToJSON()` 不变
+- `src/spacedRepetition.ts` — 纯函数，不变
+- `src/predictions.ts` — 纯函数，不变
+- `src/components/` 下除 SettingsPanel 外的所有组件 — 仍然用 `db.*`
+- `src/charts/` 下所有图表 — 纯展示组件
+- `data/hot100.ts` — 静态数据
+- `vite.config.ts` — 不变
 
-### Unchanged files
-- `src/db.ts` — IndexedDB schema unchanged
-- `src/types.ts` — types unchanged
-- `src/seed.ts` — `initializeData()`, `syncFromJSON()`, `exportToJSON()` unchanged
-- `src/spacedRepetition.ts` — pure function, unchanged
-- `src/predictions.ts` — pure function, unchanged
-- All components in `src/components/` (except SettingsPanel) — still use `db.*`
-- All charts in `src/charts/` — pure components
-- `data/hot100.ts` — static data
-- `vite.config.ts` — unchanged
+## SQLite 表结构
 
-## SQLite Schema
-
-Mirrors IndexedDB schema exactly:
+与 IndexedDB 结构一致：
 
 ```sql
 CREATE TABLE problems (
@@ -134,37 +130,33 @@ CREATE TABLE settings (
 );
 ```
 
-## syncFromJSON / exportToJSON Reuse
+## 复用现有函数
 
-These existing functions in `src/seed.ts` bridge between AppData format and IndexedDB. The SQLite layer uses the same `AppData` interface, so these functions require zero changes:
+`src/seed.ts` 里的 `syncFromJSON()` 和 `exportToJSON()` 是 IndexedDB 和 AppData 之间的桥梁。SQLite 层也用同样的 AppData 格式，所以这两个函数完全不用改：
 
-- `syncFromJSON(appData)` — clears IndexedDB, bulk-adds from AppData
-- `exportToJSON()` — reads all IndexedDB tables, returns AppData
+- `syncFromJSON(appData)` — 清空 IndexedDB，批量写入 AppData
+- `exportToJSON()` — 读取 IndexedDB 全部数据，返回 AppData
 
-Express API routes call the SQLite equivalents of these functions.
+Express API 路由里调用对应的 SQLite 版本来读写。
 
-## npm Scripts
+## npm 命令
 
 ```json
 {
-  "dev": "vite --open",
-  "start": "vite --open",
-  "electron": "electron .",
+  "start": "concurrently \"vite --open\" \"electron .\"",
   "build": "tsc && vite build",
   "prod": "tsc && vite build && electron ."
 }
 ```
 
-`npm start` runs Vite (opens browser) and the user starts Electron separately with `npm run electron`. Or use a combined script with `concurrently`.
+`npm start` 一条命令搞定一切：启动 Vite → 打开浏览器 + 启动 Electron 后台（Express + SQLite + 托盘 + 通知）。用户无需额外操作，日常使用就是这个命令。
 
-## Verification
+## 验证步骤
 
-1. `npm start` → browser opens, app loads with seeded 100 problems
-2. Rate a problem → data persists in IndexedDB after page refresh
-3. `npm run electron` → Electron starts, tray icon appears, Express server on :3456
-4. Rate a problem → `POST /api/data` succeeds, SQLite file updated
-5. Close Electron, clear browser IndexedDB → restart Electron, refresh browser → data restored from SQLite
-6. Settings panel: change auto-launch → `PUT /api/settings` → Electron updates
-7. Settings panel: click "退出程序" → `POST /api/quit` → Electron quits
-8. Tray: right-click → shows review count, "退出" works
-9. Notifications: at configured time, Windows notification fires
+1. `npm start` → 浏览器打开 + Electron 托盘出现，应用加载 100 道题
+2. 评价一道题 → 刷新页面数据还在，同时 SQLite 文件已更新
+3. 清除浏览器 IndexedDB → 刷新页面 → 数据自动从 SQLite 恢复到 IndexedDB
+4. 设置面板：改开机自启开关 → `PUT /api/settings` → Electron 响应
+5. 设置面板：点"退出程序" → `POST /api/quit` → Electron 退出，浏览器仍正常使用
+6. 托盘：右键 → 显示待复习数量，可退出
+7. 通知：到设定时间 → Windows 系统通知弹出
