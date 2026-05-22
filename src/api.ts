@@ -1,6 +1,6 @@
 import { AppData, Settings } from './types'
 
-const BASE = 'http://localhost:3456/api'
+const BASE = window.location.origin + '/api'
 
 async function request<T>(url: string, options?: RequestInit): Promise<T | null> {
   try {
