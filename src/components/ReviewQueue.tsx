@@ -146,18 +146,18 @@ function QueueCard({ item, onRate }: { item: QueueItem; onRate: () => void }) {
   }
 
   return (
-    <div className="bg-slate-800 rounded-lg p-3 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <span className="text-slate-500 text-sm w-12">{item.problem.leetcodeNumber}</span>
+    <div className="bg-slate-800 rounded-lg p-2 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-slate-500 text-xs sm:text-sm sm:w-12">{item.problem.leetcodeNumber}</span>
         <a
           href={item.problem.url}
           target="_blank"
-          className="text-blue-400 hover:text-blue-300 hover:underline"
+          className="text-blue-400 hover:text-blue-300 hover:underline text-sm"
           rel="noreferrer"
         >
           {item.problem.title}
         </a>
-        <span className="text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded">
+        <span className="text-xs text-slate-500 bg-slate-700 px-1.5 py-0.5 rounded">
           {item.problem.category}
         </span>
         <span className="text-xs text-slate-500">
@@ -165,8 +165,8 @@ function QueueCard({ item, onRate }: { item: QueueItem; onRate: () => void }) {
            item.problem.difficulty === 'medium' ? '中等' : '困难'}
         </span>
       </div>
-      <div className="flex items-center gap-2">
-        <span className={`text-xs px-2 py-0.5 rounded ${levelColors[item.progress.level]}`}>
+      <div className="flex items-center gap-2 self-end sm:self-auto">
+        <span className={`text-xs px-1.5 sm:px-2 py-0.5 rounded ${levelColors[item.progress.level]}`}>
           {LEVEL_LABELS[item.progress.level]}
         </span>
         {item.progress.todayReviewCount > 0 && (
@@ -174,7 +174,7 @@ function QueueCard({ item, onRate }: { item: QueueItem; onRate: () => void }) {
         )}
         <button
           onClick={onRate}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg"
+          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 sm:px-3 py-1.5 rounded-lg"
         >
           评价
         </button>

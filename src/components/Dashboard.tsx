@@ -101,43 +101,43 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Stats cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="text-sm text-slate-400">今日进度</div>
-          <div className="text-2xl font-bold mt-1">
-            {stats.todayDone} <span className="text-base text-slate-500">/ {stats.dailyTotal}</span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-slate-400">今日进度</div>
+          <div className="text-xl sm:text-2xl font-bold mt-1">
+            {stats.todayDone} <span className="text-sm sm:text-base text-slate-500">/ {stats.dailyTotal}</span>
           </div>
           <div className="text-xs text-slate-500 mt-1">新题 {stats.todayNew} / {stats.dailyNew}</div>
         </div>
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="text-sm text-slate-400">连续打卡</div>
-          <div className="text-2xl font-bold mt-1 text-orange-400">{stats.streak.current} 天</div>
+        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-slate-400">连续打卡</div>
+          <div className="text-xl sm:text-2xl font-bold mt-1 text-orange-400">{stats.streak.current} 天</div>
           <div className="text-xs text-slate-500 mt-1">最长 {stats.streak.longest} 天</div>
         </div>
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="text-sm text-slate-400">掌握 / 未刷</div>
-          <div className="text-2xl font-bold mt-1">
+        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-slate-400">掌握 / 未刷</div>
+          <div className="text-xl sm:text-2xl font-bold mt-1">
             <span className="text-green-400">{stats.mastered}</span>
             <span className="text-slate-500"> / </span>
             <span className="text-red-400">{stats.notStarted}</span>
           </div>
         </div>
-        <div className="bg-slate-800 rounded-xl p-4">
-          <div className="text-sm text-slate-400">总进度</div>
-          <div className="text-2xl font-bold mt-1">{progressPct}%</div>
+        <div className="bg-slate-800 rounded-xl p-3 sm:p-4">
+          <div className="text-xs sm:text-sm text-slate-400">总进度</div>
+          <div className="text-xl sm:text-2xl font-bold mt-1">{progressPct}%</div>
         </div>
       </div>
 
       {/* Predictions */}
-      <div className="bg-slate-800 rounded-xl p-4 flex gap-8">
+      <div className="bg-slate-800 rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:gap-8">
         <div>
-          <span className="text-slate-400 text-sm">刷完一轮预计</span>
-          <span className="ml-2 font-bold text-blue-400">{stats.firstRoundDate}</span>
-          <span className="text-xs text-slate-500 ml-2">按 {stats.effectiveQuota} 道/天</span>
+          <span className="text-slate-400 text-xs sm:text-sm">刷完一轮预计</span>
+          <span className="ml-1 sm:ml-2 font-bold text-blue-400">{stats.firstRoundDate}</span>
+          <span className="text-xs text-slate-500 ml-1 sm:ml-2">按 {stats.effectiveQuota} 道/天</span>
         </div>
         <div>
-          <span className="text-slate-400 text-sm">全部掌握预计</span>
-          <span className="ml-2 font-bold text-green-400">{stats.allMasteredDate}</span>
+          <span className="text-slate-400 text-xs sm:text-sm">全部掌握预计</span>
+          <span className="ml-1 sm:ml-2 font-bold text-green-400">{stats.allMasteredDate}</span>
         </div>
       </div>
 
@@ -174,15 +174,15 @@ export default function Dashboard() {
         <h3 className="text-lg font-semibold mb-3">今日复习队列（前 10 道）</h3>
         <div className="space-y-2">
           {queue.map(item => (
-            <div key={item.problem.id} className="bg-slate-800 rounded-lg p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-slate-500 text-sm w-12">{item.problem.leetcodeNumber}</span>
-                <span>{item.problem.title}</span>
-                <span className="text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded">
+            <div key={item.problem.id} className="bg-slate-800 rounded-lg p-2 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <span className="text-slate-500 text-xs sm:text-sm sm:w-12">{item.problem.leetcodeNumber}</span>
+                <span className="text-sm">{item.problem.title}</span>
+                <span className="text-xs text-slate-500 bg-slate-700 px-1.5 py-0.5 rounded">
                   {item.problem.category}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-end sm:self-auto">
                 <span className={`text-xs px-2 py-1 rounded ${
                   item.progress.level === 'forgotten' ? 'bg-red-900 text-red-300' :
                   item.progress.level === 'not_started' ? 'bg-slate-700 text-slate-400' :

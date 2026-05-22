@@ -74,11 +74,11 @@ export default function ProblemList() {
   return (
     <div>
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4 items-center">
+      <div className="flex flex-wrap gap-2 mb-4 items-center">
         <select
           value={categoryFilter}
           onChange={e => setCategoryFilter(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm"
+          className="bg-slate-800 border border-slate-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
         >
           <option value="全部">全部分类</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -86,7 +86,7 @@ export default function ProblemList() {
         <select
           value={difficultyFilter}
           onChange={e => setDifficultyFilter(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm"
+          className="bg-slate-800 border border-slate-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
         >
           <option value="全部">全部难度</option>
           <option value="easy">简单</option>
@@ -96,7 +96,7 @@ export default function ProblemList() {
         <select
           value={levelFilter}
           onChange={e => setLevelFilter(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm"
+          className="bg-slate-800 border border-slate-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
         >
           <option value="全部">全部状态</option>
           <option value="not_started">未刷</option>
@@ -108,42 +108,42 @@ export default function ProblemList() {
         <div className="flex-1" />
         <button
           onClick={() => setShowAddModal(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-sm"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm"
         >
           + 添加题目
         </button>
       </div>
 
       {/* Table */}
-      <div className="bg-slate-800 rounded-xl overflow-hidden">
-        <table className="w-full">
+      <div className="bg-slate-800 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[600px]">
           <thead>
-            <tr className="border-b border-slate-700 text-sm text-slate-400">
-              <th className="text-left px-4 py-3 w-16">题号</th>
-              <th className="text-left px-4 py-3">题目</th>
-              <th className="text-left px-4 py-3">分类</th>
-              <th className="text-left px-4 py-3">难度</th>
-              <th className="text-left px-4 py-3">状态</th>
-              <th className="text-left px-4 py-3">操作</th>
+            <tr className="border-b border-slate-700 text-xs sm:text-sm text-slate-400">
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3 w-12 sm:w-16">题号</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3">题目</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3 hidden sm:table-cell">分类</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3">难度</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3">状态</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3">操作</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(p => (
               <tr key={p.id} className="border-b border-slate-700/50 hover:bg-slate-750">
-                <td className="px-4 py-2.5 text-slate-500">{p.leetcodeNumber}</td>
-                <td className="px-4 py-2.5">
+                <td className="px-2 sm:px-4 py-2 sm:py-2.5 text-slate-500 text-xs sm:text-sm">{p.leetcodeNumber}</td>
+                <td className="px-2 sm:px-4 py-2 sm:py-2.5">
                   <a
                     href={p.url}
                     target="_blank"
-                    className="text-blue-400 hover:text-blue-300 hover:underline"
+                    className="text-blue-400 hover:text-blue-300 hover:underline text-xs sm:text-sm"
                     rel="noreferrer"
                   >
                     {p.title}
                   </a>
-                  {p.isCustom ? <span className="text-xs text-slate-500 ml-2">自定义</span> : null}
+                  {p.isCustom ? <span className="text-xs text-slate-500 ml-1 sm:ml-2">自定义</span> : null}
                 </td>
-                <td className="px-4 py-2.5 text-slate-400">{p.category}</td>
-                <td className="px-4 py-2.5">
+                <td className="px-2 sm:px-4 py-2 sm:py-2.5 text-slate-400 text-xs sm:text-sm hidden sm:table-cell">{p.category}</td>
+                <td className="px-2 sm:px-4 py-2 sm:py-2.5">
                   <span className={`text-xs ${
                     p.difficulty === 'easy' ? 'text-green-400' :
                     p.difficulty === 'medium' ? 'text-yellow-400' : 'text-red-400'
@@ -151,8 +151,8 @@ export default function ProblemList() {
                     {DIFFICULTY_LABELS[p.difficulty]}
                   </span>
                 </td>
-                <td className="px-4 py-2.5">
-                  <span className={`text-xs px-2 py-0.5 rounded ${
+                <td className="px-2 sm:px-4 py-2 sm:py-2.5">
+                  <span className={`text-xs px-1.5 sm:px-2 py-0.5 rounded ${
                     p.progress?.level === 'mastered' ? 'bg-green-900 text-green-300' :
                     p.progress?.level === 'not_started' ? 'bg-slate-700 text-slate-400' :
                     p.progress?.level === 'forgotten' ? 'bg-red-900 text-red-300' :
@@ -161,14 +161,14 @@ export default function ProblemList() {
                     {LEVEL_LABELS[p.progress?.level || 'not_started']}
                   </span>
                 </td>
-                <td className="px-4 py-2.5">
+                <td className="px-2 sm:px-4 py-2 sm:py-2.5">
                   <select
                     value=""
                     onChange={e => {
                       if (e.target.value) updateLevel(p.id, e.target.value as Level)
                     }}
                     disabled={updating === p.id}
-                    className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs"
+                    className="bg-slate-700 border border-slate-600 rounded px-1.5 sm:px-2 py-1 text-xs"
                   >
                     <option value="">更新状态</option>
                     {LEVEL_OPTIONS.map(opt => (

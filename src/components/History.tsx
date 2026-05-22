@@ -84,12 +84,12 @@ export default function History() {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {chartTabs.map(ct => (
           <button
             key={ct.id}
             onClick={() => setActiveChart(ct.id)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`px-2.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
               activeChart === ct.id
                 ? 'bg-blue-600 text-white'
                 : 'bg-slate-800 text-slate-400 hover:text-slate-200'
@@ -100,7 +100,7 @@ export default function History() {
         ))}
       </div>
 
-      <div className="bg-slate-800 rounded-xl p-4">
+      <div className="bg-slate-800 rounded-xl p-3 sm:p-4 overflow-x-auto">
         {activeChart === 'heatmap' && (
           <Heatmap logs={logs} onDateClick={setSelectedDate} selectedDate={selectedDate} />
         )}
@@ -109,11 +109,11 @@ export default function History() {
         {activeChart === 'radar' && <CategoryRadar problems={problems} progressList={progressList} />}
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-wrap gap-2 items-center">
         <select
           value={filterCategory}
           onChange={e => setFilterCategory(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm"
+          className="bg-slate-800 border border-slate-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm"
         >
           <option value="全部">全部分类</option>
           {[...new Set(problems.map(p => p.category))].map(c => (
@@ -124,20 +124,18 @@ export default function History() {
           type="date"
           value={startDate}
           onChange={e => setStartDate(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm"
-          placeholder="开始日期"
+          className="bg-slate-800 border border-slate-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm w-32 sm:w-auto"
         />
         <input
           type="date"
           value={endDate}
           onChange={e => setEndDate(e.target.value)}
-          className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm"
-          placeholder="结束日期"
+          className="bg-slate-800 border border-slate-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs sm:text-sm w-32 sm:w-auto"
         />
         {selectedDate && (
           <button
             onClick={() => setSelectedDate(null)}
-            className="text-sm text-blue-400 hover:text-blue-300"
+            className="text-xs sm:text-sm text-blue-400 hover:text-blue-300"
           >
             清除日期筛选
           </button>
@@ -145,22 +143,22 @@ export default function History() {
         <div className="flex-1" />
         <button
           onClick={exportCSV}
-          className="bg-slate-800 hover:bg-slate-700 text-sm px-4 py-1.5 rounded-lg border border-slate-700"
+          className="bg-slate-800 hover:bg-slate-700 text-xs sm:text-sm px-3 sm:px-4 py-1.5 rounded-lg border border-slate-700"
         >
           导出 CSV
         </button>
       </div>
 
-      <div className="bg-slate-800 rounded-xl overflow-hidden">
-        <table className="w-full">
+      <div className="bg-slate-800 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[550px]">
           <thead>
-            <tr className="border-b border-slate-700 text-sm text-slate-400">
-              <th className="text-left px-4 py-3">日期</th>
-              <th className="text-left px-4 py-3">题号</th>
-              <th className="text-left px-4 py-3">题目</th>
-              <th className="text-left px-4 py-3">分类</th>
-              <th className="text-left px-4 py-3">难度</th>
-              <th className="text-left px-4 py-3">状态变化</th>
+            <tr className="border-b border-slate-700 text-xs sm:text-sm text-slate-400">
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3">日期</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3">题号</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3">题目</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3 hidden sm:table-cell">分类</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3 hidden sm:table-cell">难度</th>
+              <th className="text-left px-2 sm:px-4 py-2 sm:py-3">状态变化</th>
             </tr>
           </thead>
           <tbody>
@@ -168,14 +166,14 @@ export default function History() {
               const p = problemMap.get(l.problemId)
               return (
                 <tr key={l.id} className="border-b border-slate-700/50">
-                  <td className="px-4 py-2 text-sm text-slate-400">{l.date}</td>
-                  <td className="px-4 py-2 text-sm text-slate-500">{p?.leetcodeNumber}</td>
-                  <td className="px-4 py-2 text-sm">{p?.title}</td>
-                  <td className="px-4 py-2 text-sm text-slate-400">{p?.category}</td>
-                  <td className="px-4 py-2 text-sm">{p ? DIFFICULTY_LABELS[p.difficulty] : ''}</td>
-                  <td className="px-4 py-2 text-sm">
+                  <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-400">{l.date}</td>
+                  <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-500">{p?.leetcodeNumber}</td>
+                  <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm">{p?.title}</td>
+                  <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-400 hidden sm:table-cell">{p?.category}</td>
+                  <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm hidden sm:table-cell">{p ? DIFFICULTY_LABELS[p.difficulty] : ''}</td>
+                  <td className="px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm">
                     <span className="text-slate-500">{LEVEL_LABELS[l.oldLevel as keyof typeof LEVEL_LABELS] || l.oldLevel}</span>
-                    <span className="mx-1 text-slate-600">→</span>
+                    <span className="mx-0.5 sm:mx-1 text-slate-600">→</span>
                     <span>{LEVEL_LABELS[l.newLevel as keyof typeof LEVEL_LABELS] || l.newLevel}</span>
                   </td>
                 </tr>

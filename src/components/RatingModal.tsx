@@ -50,7 +50,7 @@ export default function RatingModal({ item, onClose, onRated }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl p-6 w-96">
+      <div className="bg-slate-800 rounded-xl p-4 sm:p-6 w-[92vw] max-w-sm">
         <h3 className="text-lg font-semibold mb-2">
           {item.problem.leetcodeNumber}. {item.problem.title}
         </h3>

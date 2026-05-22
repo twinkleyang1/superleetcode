@@ -35,7 +35,7 @@ export default function SettingsPanel({ onClose }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-xl p-6 w-96 space-y-4">
+      <div className="bg-slate-800 rounded-xl p-4 sm:p-6 w-[92vw] max-w-sm space-y-4">
         <h3 className="text-lg font-semibold">设置</h3>
 
         <div>
