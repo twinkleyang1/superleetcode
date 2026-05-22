@@ -81,7 +81,7 @@ function setupReminder() {
 
 function startServer() {
   const expressApp = createServer()
-  server = expressApp.listen(3456, '127.0.0.1', () => {
+  server = expressApp.listen(3456, '0.0.0.0', () => {
     console.log('Express server running on http://localhost:3456')
   })
 }
