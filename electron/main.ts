@@ -30,7 +30,7 @@ function createTray() {
     const contextMenu = Menu.buildFromTemplate([
       {
         label: '打开网页',
-        click: () => shell.openExternal('http://localhost:5173')
+        click: () => shell.openExternal('http://localhost:3456')
       },
       {
         label: `今日待复习: ${needsReview} 道`,
@@ -52,7 +52,7 @@ function createTray() {
   updateMenu()
   setInterval(updateMenu, 60000)
 
-  tray.on('double-click', () => shell.openExternal('http://localhost:5173'))
+  tray.on('double-click', () => shell.openExternal('http://localhost:3456'))
 }
 
 function setupReminder() {

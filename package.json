@@ -4,9 +4,9 @@
   "description": "LeetCode Hot 100 刷题辅助工具",
   "main": "dist-electron/main.js",
   "scripts": {
-    "start": "concurrently \"vite --open\" \"electron .\"",
-    "build": "tsc && vite build",
-    "prod": "tsc && vite build && electron ."
+    "start": "tsc && vite build && electron .",
+    "dev": "concurrently \"vite --open\" \"electron .\"",
+    "build": "tsc && vite build"
   },
   "dependencies": {
     "cors": "^2.8.6",

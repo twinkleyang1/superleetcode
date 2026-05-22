@@ -1,11 +1,20 @@
 import express from 'express'
 import cors from 'cors'
+import path from 'path'
 import { readData, writeData, readSettings, writeSettings, SettingsData } from './store'
 
 export function createServer(): express.Express {
   const app = express()
   app.use(cors())
   app.use(express.json({ limit: '10mb' }))
+
+  // Serve static frontend files
+  const distPath = path.join(__dirname, '..', 'dist')
+  app.use(express.static(distPath))
+  // SPA fallback: all non-API routes go to index.html
+  app.get(/^\/(?!api\/).*/, (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'))
+  })
 
   app.get('/api/data', (_req, res) => {
     try {
