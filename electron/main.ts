@@ -1,5 +1,5 @@
 import { app, Tray, Menu, nativeImage, Notification, shell } from 'electron'
-import { readData, readSettings } from './store'
+import { initStore, readData, readSettings } from './store'
 import { createServer } from './server'
 
 let tray: Tray | null = null
@@ -86,7 +86,8 @@ function startServer() {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await initStore()
   startServer()
   createTray()
   setupReminder()

@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import Database from 'better-sqlite3'
+import initSqlJs, { Database as SqlJsDatabase } from 'sql.js'
 import path from 'path'
 import fs from 'fs'
 
@@ -10,58 +10,73 @@ if (!fs.existsSync(DB_DIR)) {
   fs.mkdirSync(DB_DIR, { recursive: true })
 }
 
-const db = new Database(DB_PATH)
-db.pragma('journal_mode = WAL')
+let db: SqlJsDatabase
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS problems (
-    id INTEGER PRIMARY KEY,
-    leetcodeNumber INTEGER,
-    title TEXT NOT NULL,
-    difficulty TEXT NOT NULL,
-    category TEXT NOT NULL,
-    url TEXT,
-    isCustom INTEGER DEFAULT 0
-  );
+function saveToDisk(): void {
+  const data = db.export()
+  const buffer = Buffer.from(data)
+  fs.writeFileSync(DB_PATH, buffer)
+}
 
-  CREATE TABLE IF NOT EXISTS progress (
-    id INTEGER PRIMARY KEY,
-    problemId INTEGER NOT NULL,
-    level TEXT NOT NULL DEFAULT 'not_started',
-    lastReviewedAt TEXT,
-    nextReviewAt TEXT,
-    reviewCount INTEGER DEFAULT 0,
-    todayReviewCount INTEGER DEFAULT 0,
-    consecutiveMastered INTEGER DEFAULT 0
-  );
+export async function initStore(): Promise<void> {
+  const SQL = await initSqlJs()
 
-  CREATE TABLE IF NOT EXISTS review_logs (
-    id INTEGER PRIMARY KEY,
-    problemId INTEGER NOT NULL,
-    date TEXT NOT NULL,
-    oldLevel TEXT NOT NULL,
-    newLevel TEXT NOT NULL,
-    reviewedAt TEXT NOT NULL
-  );
+  if (fs.existsSync(DB_PATH)) {
+    const fileBuffer = fs.readFileSync(DB_PATH)
+    db = new SQL.Database(fileBuffer)
+  } else {
+    db = new SQL.Database()
+  }
 
-  CREATE TABLE IF NOT EXISTS settings (
-    id INTEGER PRIMARY KEY,
-    dailyTotal INTEGER DEFAULT 5,
-    dailyNew INTEGER DEFAULT 2,
-    autoLaunch INTEGER DEFAULT 1,
-    reminderTime TEXT DEFAULT '09:00'
-  );
-`)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS problems (
+      id INTEGER PRIMARY KEY,
+      leetcodeNumber INTEGER,
+      title TEXT NOT NULL,
+      difficulty TEXT NOT NULL,
+      category TEXT NOT NULL,
+      url TEXT,
+      isCustom INTEGER DEFAULT 0
+    );
 
-const problemCount = (db.prepare('SELECT COUNT(*) as count FROM problems').get() as { count: number }).count
-if (problemCount === 0) {
-  const insertProblem = db.prepare(
-    'INSERT INTO problems (id, leetcodeNumber, title, difficulty, category, url, isCustom) VALUES (?, ?, ?, ?, ?, ?, ?)'
-  )
-  const insertProgress = db.prepare(
-    'INSERT INTO progress (id, problemId, level, lastReviewedAt, nextReviewAt, reviewCount, todayReviewCount, consecutiveMastered) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  )
+    CREATE TABLE IF NOT EXISTS progress (
+      id INTEGER PRIMARY KEY,
+      problemId INTEGER NOT NULL,
+      level TEXT NOT NULL DEFAULT 'not_started',
+      lastReviewedAt TEXT,
+      nextReviewAt TEXT,
+      reviewCount INTEGER DEFAULT 0,
+      todayReviewCount INTEGER DEFAULT 0,
+      consecutiveMastered INTEGER DEFAULT 0
+    );
 
+    CREATE TABLE IF NOT EXISTS review_logs (
+      id INTEGER PRIMARY KEY,
+      problemId INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      oldLevel TEXT NOT NULL,
+      newLevel TEXT NOT NULL,
+      reviewedAt TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      id INTEGER PRIMARY KEY,
+      dailyTotal INTEGER DEFAULT 5,
+      dailyNew INTEGER DEFAULT 2,
+      autoLaunch INTEGER DEFAULT 1,
+      reminderTime TEXT DEFAULT '09:00'
+    );
+  `)
+  saveToDisk()
+
+  const result = db.exec('SELECT COUNT(*) as count FROM problems')
+  const count = result.length > 0 ? result[0].values[0][0] as number : 0
+  if (count === 0) {
+    seedData()
+  }
+}
+
+function seedData(): void {
   const hot100: { leetcodeNumber: number; title: string; difficulty: string; category: string }[] = [
     { leetcodeNumber: 1, title: '两数之和', difficulty: 'easy', category: '哈希' },
     { leetcodeNumber: 49, title: '字母异位词分组', difficulty: 'medium', category: '哈希' },
@@ -209,16 +224,21 @@ if (problemCount === 0) {
     '颜色分类': 'sort-colors', '下一个排列': 'next-permutation', '寻找重复数': 'find-the-duplicate-number',
   }
 
-  const seedAll = db.transaction(() => {
-    hot100.forEach((p, i) => {
-      const id = i + 1
-      const slug = slugMap[p.title] || p.title.toLowerCase().replace(/\s+/g, '-')
-      insertProblem.run(id, p.leetcodeNumber, p.title, p.difficulty, p.category, `https://leetcode.cn/problems/${slug}`, 0)
-      insertProgress.run(id, id, 'not_started', null, null, 0, 0, 0)
-    })
-    db.prepare('INSERT OR IGNORE INTO settings (id, dailyTotal, dailyNew, autoLaunch, reminderTime) VALUES (1, 5, 2, 1, ?)').run('09:00')
+  const stmts = db.prepare('INSERT INTO problems (id, leetcodeNumber, title, difficulty, category, url, isCustom) VALUES (?, ?, ?, ?, ?, ?, ?)')
+  const progStmt = db.prepare('INSERT INTO progress (id, problemId, level, lastReviewedAt, nextReviewAt, reviewCount, todayReviewCount, consecutiveMastered) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+
+  db.run('BEGIN')
+  hot100.forEach((p, i) => {
+    const id = i + 1
+    const slug = slugMap[p.title] || p.title.toLowerCase().replace(/\s+/g, '-')
+    stmts.run([id, p.leetcodeNumber, p.title, p.difficulty, p.category, `https://leetcode.cn/problems/${slug}`, 0])
+    progStmt.run([id, id, 'not_started', null, null, 0, 0, 0])
   })
-  seedAll()
+  db.run("INSERT OR IGNORE INTO settings (id, dailyTotal, dailyNew, autoLaunch, reminderTime) VALUES (1, 5, 2, 1, '09:00')")
+  db.run('COMMIT')
+  stmts.free()
+  progStmt.free()
+  saveToDisk()
 }
 
 export interface AppData {
@@ -246,11 +266,27 @@ export interface SettingsData {
   dailyTotal: number; dailyNew: number; autoLaunch: boolean; reminderTime: string
 }
 
+function queryAll(sql: string): Record<string, unknown>[] {
+  const result = db.exec(sql)
+  if (result.length === 0) return []
+  const { columns, values } = result[0]
+  return values.map(row => {
+    const obj: Record<string, unknown> = {}
+    columns.forEach((col, i) => { obj[col] = row[i] })
+    return obj
+  })
+}
+
+function queryOne(sql: string): Record<string, unknown> | null {
+  const rows = queryAll(sql)
+  return rows.length > 0 ? rows[0] : null
+}
+
 export function readData(): AppData {
-  const problems = db.prepare('SELECT * FROM problems ORDER BY id').all() as ProblemData[]
-  const progress = db.prepare('SELECT * FROM progress ORDER BY id').all() as ProgressData[]
-  const reviewLogs = db.prepare('SELECT * FROM review_logs ORDER BY id').all() as ReviewLogData[]
-  const settingsRow = db.prepare('SELECT * FROM settings WHERE id = 1').get() as { dailyTotal: number; dailyNew: number; autoLaunch: number; reminderTime: string } | undefined
+  const problems = queryAll('SELECT * FROM problems ORDER BY id') as unknown as ProblemData[]
+  const progress = queryAll('SELECT * FROM progress ORDER BY id') as unknown as ProgressData[]
+  const reviewLogs = queryAll('SELECT * FROM review_logs ORDER BY id') as unknown as ReviewLogData[]
+  const settingsRow = queryOne('SELECT * FROM settings WHERE id = 1') as { dailyTotal: number; dailyNew: number; autoLaunch: number; reminderTime: string } | null
   const settings: SettingsData = settingsRow
     ? { dailyTotal: settingsRow.dailyTotal, dailyNew: settingsRow.dailyNew, autoLaunch: settingsRow.autoLaunch === 1, reminderTime: settingsRow.reminderTime }
     : { dailyTotal: 5, dailyNew: 2, autoLaunch: true, reminderTime: '09:00' }
@@ -258,24 +294,25 @@ export function readData(): AppData {
 }
 
 export function writeData(data: AppData): void {
-  const writeAll = db.transaction(() => {
-    db.prepare('DELETE FROM review_logs').run()
-    db.prepare('DELETE FROM progress').run()
-    db.prepare('DELETE FROM problems').run()
-    db.prepare('DELETE FROM settings').run()
+  db.run('BEGIN')
+  db.run('DELETE FROM review_logs')
+  db.run('DELETE FROM progress')
+  db.run('DELETE FROM problems')
+  db.run('DELETE FROM settings')
 
-    const insP = db.prepare('INSERT INTO problems (id, leetcodeNumber, title, difficulty, category, url, isCustom) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    const insPr = db.prepare('INSERT INTO progress (id, problemId, level, lastReviewedAt, nextReviewAt, reviewCount, todayReviewCount, consecutiveMastered) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-    const insL = db.prepare('INSERT INTO review_logs (id, problemId, date, oldLevel, newLevel, reviewedAt) VALUES (?, ?, ?, ?, ?, ?)')
+  const insP = db.prepare('INSERT INTO problems (id, leetcodeNumber, title, difficulty, category, url, isCustom) VALUES (?, ?, ?, ?, ?, ?, ?)')
+  const insPr = db.prepare('INSERT INTO progress (id, problemId, level, lastReviewedAt, nextReviewAt, reviewCount, todayReviewCount, consecutiveMastered) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+  const insL = db.prepare('INSERT INTO review_logs (id, problemId, date, oldLevel, newLevel, reviewedAt) VALUES (?, ?, ?, ?, ?, ?)')
 
-    for (const p of data.problems) insP.run(p.id, p.leetcodeNumber, p.title, p.difficulty, p.category, p.url, p.isCustom ? 1 : 0)
-    for (const p of data.progress) insPr.run(p.id, p.problemId, p.level, p.lastReviewedAt, p.nextReviewAt, p.reviewCount, p.todayReviewCount, p.consecutiveMastered)
-    for (const l of data.reviewLogs) insL.run(l.id, l.problemId, l.date, l.oldLevel, l.newLevel, l.reviewedAt)
-    db.prepare('INSERT OR REPLACE INTO settings (id, dailyTotal, dailyNew, autoLaunch, reminderTime) VALUES (1, ?, ?, ?, ?)').run(
-      data.settings.dailyTotal, data.settings.dailyNew, data.settings.autoLaunch ? 1 : 0, data.settings.reminderTime
-    )
-  })
-  writeAll()
+  for (const p of data.problems) insP.run([p.id, p.leetcodeNumber, p.title, p.difficulty, p.category, p.url, p.isCustom ? 1 : 0])
+  for (const p of data.progress) insPr.run([p.id, p.problemId, p.level, p.lastReviewedAt, p.nextReviewAt, p.reviewCount, p.todayReviewCount, p.consecutiveMastered])
+  for (const l of data.reviewLogs) insL.run([l.id, l.problemId, l.date, l.oldLevel, l.newLevel, l.reviewedAt])
+  db.run('INSERT OR REPLACE INTO settings (id, dailyTotal, dailyNew, autoLaunch, reminderTime) VALUES (1, ?, ?, ?, ?)', [
+    data.settings.dailyTotal, data.settings.dailyNew, data.settings.autoLaunch ? 1 : 0, data.settings.reminderTime
+  ])
+  db.run('COMMIT')
+  insP.free(); insPr.free(); insL.free()
+  saveToDisk()
 }
 
 export function readSettings(): SettingsData {
@@ -283,7 +320,8 @@ export function readSettings(): SettingsData {
 }
 
 export function writeSettings(settings: SettingsData): void {
-  db.prepare('INSERT OR REPLACE INTO settings (id, dailyTotal, dailyNew, autoLaunch, reminderTime) VALUES (1, ?, ?, ?, ?)').run(
+  db.run('INSERT OR REPLACE INTO settings (id, dailyTotal, dailyNew, autoLaunch, reminderTime) VALUES (1, ?, ?, ?, ?)', [
     settings.dailyTotal, settings.dailyNew, settings.autoLaunch ? 1 : 0, settings.reminderTime
-  )
+  ])
+  saveToDisk()
 }
