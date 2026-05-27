@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { ReviewLog } from '../types'
+import { getLocalDateString } from '../spacedRepetition'
 
 interface Props {
   logs: ReviewLog[]
@@ -24,7 +25,7 @@ export default function Heatmap({ logs, onDateClick, selectedDate }: Props) {
     for (let i = 364; i >= 0; i--) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = getLocalDateString(d)
       const count = countMap[dateStr] || 0
       let level = 0
       if (count > 0) level = 1

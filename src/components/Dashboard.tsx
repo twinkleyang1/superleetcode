@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { db } from '../db'
 import { Problem, Progress, Level, LEVEL_LABELS } from '../types'
 import { computePredictions, computeStreak } from '../predictions'
+import { getLocalDateString } from '../spacedRepetition'
 
 interface Stats {
   todayDone: number
@@ -37,7 +38,7 @@ export default function Dashboard() {
     const settingsArr = await db.settings.toArray()
     const settings = settingsArr[0] || { dailyTotal: 5, dailyNew: 2 }
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateString()
     const todayLogs = logs.filter(l => l.date === today)
     const todayDone = new Set(todayLogs.map(l => l.problemId)).size
     const todayNew = new Set(

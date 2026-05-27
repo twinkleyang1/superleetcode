@@ -1,5 +1,10 @@
 import { Level, Progress, Difficulty } from './types'
 
+export function getLocalDateString(date?: Date): string {
+  const d = date || new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const LEVEL_ORDER: Record<string, number> = {
   not_started: -1, forgotten: 0, partial: 1, hesitant: 2, mastered: 3
 }
@@ -172,9 +177,10 @@ export function computeNextReview(
 }
 
 export function resetTodayReviewCounts(progressList: Progress[]): Progress[] {
-  const today = new Date().toISOString().split('T')[0]
+  const today = getLocalDateString()
   return progressList.map(p => {
-    const isNewDay = p.lastReviewedAt && p.lastReviewedAt.split('T')[0] !== today
+    const lastDate = p.lastReviewedAt ? getLocalDateString(new Date(p.lastReviewedAt)) : null
+    const isNewDay = lastDate && lastDate !== today
     const neverReviewed = !p.lastReviewedAt
 
     if (isNewDay || neverReviewed) {

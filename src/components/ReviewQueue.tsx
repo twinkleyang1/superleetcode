@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { db } from '../db'
 import { Problem, Progress, Level, LEVEL_LABELS } from '../types'
-import { computeForgetScore } from '../spacedRepetition'
+import { computeForgetScore, getLocalDateString } from '../spacedRepetition'
 import RatingModal from './RatingModal'
 
 interface QueueItem {
@@ -25,7 +25,7 @@ export default function ReviewQueue() {
     const settingsArr = await db.settings.toArray()
     const settings = settingsArr[0] || { dailyTotal: 5, dailyNew: 2 }
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateString()
     const logs = await db.reviewLogs.where({ date: today }).toArray()
     const todayDone = new Set(logs.map(l => l.problemId)).size
     const todayNewCount = new Set(

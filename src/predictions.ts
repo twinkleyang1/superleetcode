@@ -1,4 +1,5 @@
 import { Progress } from './types'
+import { getLocalDateString } from './spacedRepetition'
 
 interface Predictions {
   firstRoundDate: Date
@@ -93,8 +94,12 @@ export function computeStreak(reviewDates: string[]): { current: number; longest
   if (reviewDates.length === 0) return { current: 0, longest: 0 }
 
   const uniqueDates = [...new Set(reviewDates)].sort()
-  const today = new Date().toISOString().split('T')[0]
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  const today = getLocalDateString()
+  const yesterday = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 1)
+    return getLocalDateString(d)
+  })()
 
   // Calculate longest streak
   let longest = 0
@@ -125,7 +130,7 @@ export function computeStreak(reviewDates: string[]): { current: number; longest
 
   // Check backwards from today
   let d = new Date(today)
-  while (allDates.includes(d.toISOString().split('T')[0])) {
+  while (allDates.includes(getLocalDateString(d))) {
     current++
     d.setDate(d.getDate() - 1)
   }

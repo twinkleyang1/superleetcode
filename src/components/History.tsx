@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { db } from '../db'
 import { Problem, Progress, ReviewLog, LEVEL_LABELS, DIFFICULTY_LABELS } from '../types'
+import { getLocalDateString } from '../spacedRepetition'
 import Heatmap from '../charts/Heatmap'
 import TrendChart from '../charts/TrendChart'
 import StackedAreaChart from '../charts/StackedAreaChart'
@@ -18,12 +19,12 @@ export default function History() {
   const [startDate, setStartDate] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() - 30)
-    return d.toISOString().split('T')[0]
+    return getLocalDateString(d)
   })
   const [endDate, setEndDate] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() + 1)
-    return d.toISOString().split('T')[0]
+    return getLocalDateString(d)
   })
 
   useEffect(() => {
@@ -71,7 +72,7 @@ export default function History() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `leetcode-review-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `leetcode-review-${getLocalDateString()}.csv`
     a.click()
   }
 

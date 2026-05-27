@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { db } from '../db'
 import { Problem, Progress, Level, LEVEL_LABELS, DIFFICULTY_LABELS, CATEGORIES } from '../types'
-import { computeNextReview } from '../spacedRepetition'
+import { computeNextReview, getLocalDateString } from '../spacedRepetition'
 import { exportToJSON } from '../seed'
 import { api } from '../api'
 import AddProblemModal from './AddProblemModal'
@@ -48,7 +48,7 @@ export default function ProblemList() {
 
     await db.progress.update(progress.id, updates)
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateString()
     const logCount = await db.reviewLogs.count()
     await db.reviewLogs.add({
       id: logCount + 1,

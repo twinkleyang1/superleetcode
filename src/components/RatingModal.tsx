@@ -1,6 +1,6 @@
 import { Level, Difficulty } from '../types'
 import { db } from '../db'
-import { computeNextReview } from '../spacedRepetition'
+import { computeNextReview, getLocalDateString } from '../spacedRepetition'
 import { exportToJSON } from '../seed'
 import { api } from '../api'
 
@@ -31,7 +31,7 @@ export default function RatingModal({ item, onClose, onRated }: Props) {
     const updates = computeNextReview(progress, newLevel, item.problem.difficulty)
     await db.progress.update(progress.id, updates)
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateString()
     const logCount = await db.reviewLogs.count()
     await db.reviewLogs.add({
       id: logCount + 1,
