@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { db } from '../db'
 import { Problem, Progress, Level, LEVEL_LABELS } from '../types'
+import { computeForgetScore } from '../spacedRepetition'
 import RatingModal from './RatingModal'
 
 interface QueueItem {
   problem: Problem
   progress: Progress
   zone: 'review' | 'newQuota' | 'extraNew'
+  forgetScore: number
 }
 
 export default function ReviewQueue() {
@@ -36,19 +38,22 @@ export default function ReviewQueue() {
     const now = new Date()
     const result: QueueItem[] = []
 
-    // Zone 1: Due reviews (forgotten first)
+    // Zone 1: Due reviews (forgotten first, filtered by dailyTarget)
     for (const p of progressList) {
-      if (p.level === 'forgotten') {
+      if (p.level === 'forgotten' && p.dailyCompleted < p.dailyTarget) {
         const problem = problemMap.get(p.problemId)
-        if (problem) result.push({ problem, progress: p, zone: 'review' })
+        if (problem) result.push({ problem, progress: p, zone: 'review', forgetScore: computeForgetScore(p) })
       }
     }
     for (const p of progressList) {
       if (p.nextReviewAt && new Date(p.nextReviewAt) <= now && p.level !== 'forgotten') {
         const problem = problemMap.get(p.problemId)
-        if (problem) result.push({ problem, progress: p, zone: 'review' })
+        if (problem) result.push({ problem, progress: p, zone: 'review', forgetScore: computeForgetScore(p) })
       }
     }
+
+    // Sort review zone items by forgetScore descending
+    result.sort((a, b) => b.forgetScore - a.forgetScore)
 
     // Zone 2: New problems to meet quota
     const newNeeded = Math.max(0, settings.dailyNew - todayNewCount)
@@ -56,7 +61,7 @@ export default function ReviewQueue() {
     for (let i = 0; i < Math.min(newNeeded, notStarted.length); i++) {
       const problem = problemMap.get(notStarted[i].problemId)
       if (problem && !result.find(r => r.problem.id === problem.id)) {
-        result.push({ problem, progress: notStarted[i], zone: 'newQuota' })
+        result.push({ problem, progress: notStarted[i], zone: 'newQuota', forgetScore: 0 })
       }
     }
 
@@ -65,7 +70,7 @@ export default function ReviewQueue() {
     const extraNew = notStarted.filter(p => !result.find(r => r.problem.id === problemMap.get(p.problemId)?.id))
     for (let i = 0; i < Math.min(totalNeeded, extraNew.length); i++) {
       const problem = problemMap.get(extraNew[i].problemId)
-      if (problem) result.push({ problem, progress: extraNew[i], zone: 'extraNew' })
+      if (problem) result.push({ problem, progress: extraNew[i], zone: 'extraNew', forgetScore: 0 })
     }
 
     setQueue(result)
@@ -129,7 +134,10 @@ export default function ReviewQueue() {
         <RatingModal
           item={ratingItem}
           onClose={() => setRatingItem(null)}
-          onRated={() => { setRatingItem(null); loadQueue() }}
+          onRated={(shouldReenter) => {
+            setRatingItem(null)
+            loadQueue()
+          }}
         />
       )}
     </div>
@@ -169,8 +177,15 @@ function QueueCard({ item, onRate }: { item: QueueItem; onRate: () => void }) {
         <span className={`text-xs px-1.5 sm:px-2 py-0.5 rounded ${levelColors[item.progress.level]}`}>
           {LEVEL_LABELS[item.progress.level]}
         </span>
-        {item.progress.todayReviewCount > 0 && (
-          <span className="text-xs text-slate-500">今日×{item.progress.todayReviewCount}</span>
+        {item.progress.dailyTarget > 1 && (
+          <span className="text-xs text-orange-400">
+            {item.progress.dailyCompleted}/{item.progress.dailyTarget}
+          </span>
+        )}
+        {item.forgetScore > 50 && (
+          <span className="text-xs text-red-400" title="遗忘严重度">
+            {Math.round(item.forgetScore)}
+          </span>
         )}
         <button
           onClick={onRate}
