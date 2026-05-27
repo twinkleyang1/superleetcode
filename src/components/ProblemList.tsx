@@ -42,7 +42,9 @@ export default function ProblemList() {
     if (!progress) return
 
     const oldLevel = progress.level
-    const updates = computeNextReview(progress, newLevel)
+    const problem = problems.find(p => p.id === problemId)
+    const difficulty = problem?.difficulty || 'medium'
+    const updates = computeNextReview(progress, newLevel, difficulty)
 
     await db.progress.update(progress.id, updates)
 

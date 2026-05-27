@@ -1,11 +1,11 @@
-import { Level } from '../types'
+import { Level, Difficulty } from '../types'
 import { db } from '../db'
 import { computeNextReview } from '../spacedRepetition'
 import { exportToJSON } from '../seed'
 import { api } from '../api'
 
 interface QueueItem {
-  problem: { id: number; title: string; leetcodeNumber: number }
+  problem: { id: number; title: string; leetcodeNumber: number; difficulty: Difficulty }
   progress: { id: number; level: Level; problemId: number }
 }
 
@@ -28,7 +28,7 @@ export default function RatingModal({ item, onClose, onRated }: Props) {
     if (!progress) return
 
     const oldLevel = progress.level
-    const updates = computeNextReview(progress, newLevel)
+    const updates = computeNextReview(progress, newLevel, item.problem.difficulty)
     await db.progress.update(progress.id, updates)
 
     const today = new Date().toISOString().split('T')[0]
