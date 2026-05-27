@@ -98,44 +98,65 @@ export function getNextReviewInterval(level: Level, consecutiveMastered: number)
 
 export function computeNextReview(
   progress: Progress,
-  newLevel: Level
+  rawLevel: Level,
+  difficulty: Difficulty
 ): Partial<Progress> {
   const now = new Date()
 
-  const isDowngraded = newLevel === 'forgotten' || newLevel === 'partial'
+  // Compute confidence score and effective level
+  const confidenceScore = computeConfidenceScore(progress, rawLevel, difficulty)
+  const effectiveLevel = getEffectiveLevel(rawLevel, confidenceScore)
+
+  // Use effectiveLevel (not rawLevel) for all subsequent logic
+  const isDowngraded = effectiveLevel === 'forgotten' || effectiveLevel === 'partial'
   const consecutiveMastered = isDowngraded
     ? 0
-    : newLevel === 'mastered'
+    : effectiveLevel === 'mastered'
       ? progress.consecutiveMastered + 1
       : progress.consecutiveMastered
 
-  const interval = getNextReviewInterval(newLevel, consecutiveMastered)
+  const interval = getNextReviewInterval(effectiveLevel, consecutiveMastered)
   const nextReviewAt = new Date(now)
   nextReviewAt.setDate(nextReviewAt.getDate() + interval)
 
-  const forgottenCount = newLevel === 'forgotten'
+  // forgottenCount: increment if user actually clicked "forgotten"
+  const forgottenCount = rawLevel === 'forgotten'
     ? progress.forgottenCount + 1
     : progress.forgottenCount
 
-  const lastForgottenAt = newLevel === 'forgotten'
+  // lastForgottenAt: update if user actually clicked "forgotten"
+  const lastForgottenAt = rawLevel === 'forgotten'
     ? now.toISOString()
     : progress.lastForgottenAt
 
   const dailyCompleted = progress.dailyCompleted + 1
 
-  // Compute intermediate state to get forgetScore (using updated values)
+  // dailyForgottenCount: increment if user clicked "forgotten"
+  const dailyForgottenCount = rawLevel === 'forgotten'
+    ? progress.dailyForgottenCount + 1
+    : progress.dailyForgottenCount
+
+  // dailyRatingPath: append effective level
+  const levelChar = effectiveLevel[0]
+  const dailyRatingPath = progress.dailyRatingPath
+    ? progress.dailyRatingPath + ',' + levelChar
+    : levelChar
+
+  // Compute intermediate state to get forgetScore
   const intermediateProgress: Progress = {
     ...progress,
     forgottenCount,
     lastForgottenAt,
     consecutiveMastered,
-    reviewCount: progress.reviewCount + 1
+    reviewCount: progress.reviewCount + 1,
+    dailyForgottenCount,
+    dailyRatingPath
   }
   const forgetScore = computeForgetScore(intermediateProgress)
   const dailyTarget = computeDailyTarget(forgetScore)
 
   return {
-    level: newLevel,
+    level: effectiveLevel,
     lastReviewedAt: now.toISOString(),
     nextReviewAt: interval === 0 ? null : nextReviewAt.toISOString(),
     reviewCount: progress.reviewCount + 1,
@@ -144,7 +165,9 @@ export function computeNextReview(
     forgottenCount,
     lastForgottenAt,
     dailyTarget,
-    dailyCompleted
+    dailyCompleted,
+    dailyForgottenCount,
+    dailyRatingPath
   }
 }
 
@@ -159,6 +182,8 @@ export function resetTodayReviewCounts(progressList: Progress[]): Progress[] {
         ...p,
         todayReviewCount: 0,
         dailyCompleted: 0,
+        dailyForgottenCount: 0,
+        dailyRatingPath: '',
         dailyTarget: computeDailyTarget(computeForgetScore(p))
       }
       return reset
