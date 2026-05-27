@@ -1,4 +1,38 @@
-import { Level, Progress } from './types'
+import { Level, Progress, Difficulty } from './types'
+
+const LEVEL_ORDER: Record<string, number> = {
+  not_started: -1, forgotten: 0, partial: 1, hesitant: 2, mastered: 3
+}
+
+/** Check if the rating path shows oscillation (went up then down) */
+function isOscillating(path: string): boolean {
+  if (path.length < 2) return false
+  const levels = path.split(',').filter(c => c.length > 0)
+  let wentUp = false
+  for (let i = 1; i < levels.length; i++) {
+    const prev = LEVEL_ORDER[levels[i]] ?? -1
+    const curr = LEVEL_ORDER[levels[i - 1]] ?? -1
+    if (curr > prev) wentUp = true
+    if (wentUp && curr < prev) return true
+  }
+  return false
+}
+
+const F_PENALTY: Record<Level, number> = {
+  mastered: 25, hesitant: 18, partial: 12, forgotten: 6, not_started: 0
+}
+
+const I_PENALTY: Record<Difficulty, number> = {
+  easy: 15, medium: 8, hard: 0
+}
+
+const DOWNGRADE_TABLE: Record<Level, Level[]> = {
+  mastered:    ['mastered', 'hesitant', 'partial',   'forgotten'],
+  hesitant:    ['hesitant', 'partial',   'forgotten', 'forgotten'],
+  partial:     ['partial',  'forgotten', 'forgotten', 'forgotten'],
+  forgotten:   ['forgotten','forgotten', 'forgotten', 'forgotten'],
+  not_started: ['not_started','not_started','not_started','not_started']
+}
 
 export function computeForgetScore(progress: Progress): number {
   const reviewCount = progress.reviewCount
@@ -131,4 +165,54 @@ export function resetTodayReviewCounts(progressList: Progress[]): Progress[] {
     }
     return p
   })
+}
+
+export function computeConfidenceScore(
+  progress: Progress,
+  rawLevel: Level,
+  difficulty: Difficulty
+): number {
+  const today = new Date()
+  const A = progress.dailyForgottenCount
+  const B = progress.dailyCompleted + 1
+
+  // Factor C: days since last review (only when A > 0)
+  let C_penalty = 0
+  if (A > 0 && progress.lastReviewedAt) {
+    const lastReview = new Date(progress.lastReviewedAt)
+    const C = Math.floor((today.getTime() - lastReview.getTime()) / 86400000)
+    C_penalty = Math.max(0, 15 - C * 1.5)
+  }
+
+  // Factor D: historical forgetScore
+  const D = computeForgetScore(progress)
+
+  // Factor F: current level penalty (only when A > 0)
+  const F = A > 0 ? F_PENALTY[progress.level] : 0
+
+  // Factor G: oscillation check (use existing path + rawLevel)
+  const G_levelChar = rawLevel[0]
+  const tentativePath = progress.dailyRatingPath
+    ? progress.dailyRatingPath + ',' + G_levelChar
+    : G_levelChar
+  const G = isOscillating(tentativePath) ? 15 : 0
+
+  // Factor I: difficulty penalty (only when A > 0)
+  const I = A > 0 ? I_PENALTY[difficulty] : 0
+
+  let score = 100
+    - (B - 1) * 5
+    - (A > 0 ? A * 25 + C_penalty + F + I : 0)
+    - D * 0.3
+    - G
+
+  return Math.max(0, Math.min(100, score))
+}
+
+export function getEffectiveLevel(rawLevel: Level, confidenceScore: number): Level {
+  const downgradeSteps = confidenceScore >= 85 ? 0
+    : confidenceScore >= 60 ? 1
+    : confidenceScore >= 35 ? 2
+    : 3
+  return DOWNGRADE_TABLE[rawLevel][downgradeSteps]
 }
