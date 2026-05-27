@@ -25,7 +25,11 @@ function App() {
       const progressList = await db.progress.toArray()
       const reset = resetTodayReviewCounts(progressList)
       for (const p of reset) {
-        await db.progress.update(p.id, { todayReviewCount: p.todayReviewCount })
+        await db.progress.update(p.id, {
+          todayReviewCount: p.todayReviewCount,
+          dailyCompleted: p.dailyCompleted,
+          dailyTarget: p.dailyTarget
+        })
       }
 
       setLoading(false)
