@@ -12,7 +12,7 @@ interface QueueItem {
 interface Props {
   item: QueueItem
   onClose: () => void
-  onRated: () => void
+  onRated: (shouldReenter: boolean) => void
 }
 
 const RATINGS: { level: Level; label: string; desc: string; color: string }[] = [
@@ -45,7 +45,8 @@ export default function RatingModal({ item, onClose, onRated }: Props) {
     const data = await exportToJSON()
     await api.saveData(data)
 
-    onRated()
+    const shouldReenter = newLevel === 'forgotten' && updates.dailyCompleted! < updates.dailyTarget!
+    onRated(shouldReenter)
   }
 
   return (
