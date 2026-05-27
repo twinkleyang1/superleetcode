@@ -28,7 +28,9 @@ function App() {
         await db.progress.update(p.id, {
           todayReviewCount: p.todayReviewCount,
           dailyCompleted: p.dailyCompleted,
-          dailyTarget: p.dailyTarget
+          dailyTarget: p.dailyTarget,
+          dailyForgottenCount: p.dailyForgottenCount,
+          dailyRatingPath: p.dailyRatingPath
         })
       }
 
