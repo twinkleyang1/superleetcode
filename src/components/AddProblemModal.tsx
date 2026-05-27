@@ -43,7 +43,9 @@ export default function AddProblemModal({ onClose, onAdded }: Props) {
       forgottenCount: 0,
       lastForgottenAt: null,
       dailyTarget: 1,
-      dailyCompleted: 0
+      dailyCompleted: 0,
+      dailyForgottenCount: 0,
+      dailyRatingPath: ''
     })
 
     const data = await exportToJSON()

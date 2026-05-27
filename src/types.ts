@@ -24,6 +24,8 @@ export interface Progress {
   lastForgottenAt: string | null
   dailyTarget: number
   dailyCompleted: number
+  dailyForgottenCount: number
+  dailyRatingPath: string
 }
 
 export interface ReviewLog {
