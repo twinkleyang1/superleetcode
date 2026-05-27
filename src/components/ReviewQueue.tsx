@@ -53,7 +53,12 @@ export default function ReviewQueue() {
     }
 
     // Sort review zone items by forgetScore descending
-    result.sort((a, b) => b.forgetScore - a.forgetScore)
+    result.sort((a, b) => {
+      if (b.forgetScore !== a.forgetScore) return b.forgetScore - a.forgetScore
+      const aPct = a.progress.dailyCompleted / Math.max(1, a.progress.dailyTarget)
+      const bPct = b.progress.dailyCompleted / Math.max(1, b.progress.dailyTarget)
+      return aPct - bPct
+    })
 
     // Zone 2: New problems to meet quota
     const newNeeded = Math.max(0, settings.dailyNew - todayNewCount)
@@ -134,7 +139,7 @@ export default function ReviewQueue() {
         <RatingModal
           item={ratingItem}
           onClose={() => setRatingItem(null)}
-          onRated={(shouldReenter) => {
+          onRated={() => {
             setRatingItem(null)
             loadQueue()
           }}

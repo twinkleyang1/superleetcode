@@ -78,7 +78,7 @@ function bestCaseDaysToMastered(progress: Progress): number {
       let days = 0
       let cm = progress.consecutiveMastered
       for (let i = 0; i < remaining; i++) {
-        const intervals = [3, 5, 7, 10, 14]
+        const intervals = [2, 3, 5, 7, 9]
         days += intervals[Math.min(cm, intervals.length - 1)]
         cm++
       }
