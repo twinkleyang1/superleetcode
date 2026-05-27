@@ -24,7 +24,11 @@ export async function initializeData(): Promise<void> {
     nextReviewAt: null,
     reviewCount: 0,
     todayReviewCount: 0,
-    consecutiveMastered: 0
+    consecutiveMastered: 0,
+    forgottenCount: 0,
+    lastForgottenAt: null,
+    dailyTarget: 1,
+    dailyCompleted: 0
   }))
 
   await db.problems.bulkAdd(problems)

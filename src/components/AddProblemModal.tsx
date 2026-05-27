@@ -39,7 +39,11 @@ export default function AddProblemModal({ onClose, onAdded }: Props) {
       nextReviewAt: null,
       reviewCount: 0,
       todayReviewCount: 0,
-      consecutiveMastered: 0
+      consecutiveMastered: 0,
+      forgottenCount: 0,
+      lastForgottenAt: null,
+      dailyTarget: 1,
+      dailyCompleted: 0
     })
 
     const data = await exportToJSON()

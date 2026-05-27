@@ -20,6 +20,10 @@ export interface Progress {
   reviewCount: number
   todayReviewCount: number
   consecutiveMastered: number
+  forgottenCount: number
+  lastForgottenAt: string | null
+  dailyTarget: number
+  dailyCompleted: number
 }
 
 export interface ReviewLog {
