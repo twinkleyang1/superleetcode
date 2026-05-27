@@ -9,9 +9,14 @@ interface Props {
 
 export default function Heatmap({ logs, onDateClick, selectedDate }: Props) {
   const data = useMemo(() => {
-    const map: Record<string, number> = {}
+    const dailyProblems = new Map<string, Set<number>>()
     logs.forEach(l => {
-      map[l.date] = (map[l.date] || 0) + 1
+      if (!dailyProblems.has(l.date)) dailyProblems.set(l.date, new Set())
+      dailyProblems.get(l.date)!.add(l.problemId)
+    })
+    const countMap: Record<string, number> = {}
+    dailyProblems.forEach((problems, date) => {
+      countMap[date] = problems.size
     })
 
     const days: { date: string; count: number; level: number }[] = []
@@ -20,7 +25,7 @@ export default function Heatmap({ logs, onDateClick, selectedDate }: Props) {
       const d = new Date(today)
       d.setDate(d.getDate() - i)
       const dateStr = d.toISOString().split('T')[0]
-      const count = map[dateStr] || 0
+      const count = countMap[dateStr] || 0
       let level = 0
       if (count > 0) level = 1
       if (count >= 3) level = 2

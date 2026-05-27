@@ -8,12 +8,17 @@ interface Props {
 
 export default function TrendChart({ logs }: Props) {
   const data = useMemo(() => {
-    const map: Record<string, number> = {}
+    const dailyProblems = new Map<string, Set<number>>()
     logs.forEach(l => {
-      map[l.date] = (map[l.date] || 0) + 1
+      if (!dailyProblems.has(l.date)) dailyProblems.set(l.date, new Set())
+      dailyProblems.get(l.date)!.add(l.problemId)
+    })
+    const countMap: Record<string, number> = {}
+    dailyProblems.forEach((problems, date) => {
+      countMap[date] = problems.size
     })
 
-    const sorted = Object.entries(map)
+    const sorted = Object.entries(countMap)
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-60)
       .map(([date, count]) => ({ date: date.slice(5), count }))
