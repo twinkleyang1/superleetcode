@@ -73,7 +73,10 @@ export default function Dashboard() {
     const queueItems: QueueItem[] = []
 
     for (const p of progressList) {
-      if (p.level === 'forgotten' || p.level === 'not_started') {
+      if (p.level === 'forgotten' && p.dailyCompleted < p.dailyTarget) {
+        const problem = problemMap.get(p.problemId)
+        if (problem) queueItems.push({ problem, progress: p })
+      } else if (p.level === 'not_started') {
         const problem = problemMap.get(p.problemId)
         if (problem) queueItems.push({ problem, progress: p })
       } else if (p.nextReviewAt && new Date(p.nextReviewAt) <= new Date()) {
@@ -190,8 +193,10 @@ export default function Dashboard() {
                 }`}>
                   {LEVEL_LABELS[item.progress.level]}
                 </span>
-                {item.progress.todayReviewCount > 0 && (
-                  <span className="text-xs text-slate-500">今日×{item.progress.todayReviewCount}</span>
+                {item.progress.dailyTarget > 1 && (
+                  <span className="text-xs text-orange-400">
+                    {item.progress.dailyCompleted}/{item.progress.dailyTarget}
+                  </span>
                 )}
               </div>
             </div>
