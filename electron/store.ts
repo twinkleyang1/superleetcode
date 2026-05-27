@@ -47,7 +47,11 @@ export async function initStore(): Promise<void> {
       nextReviewAt TEXT,
       reviewCount INTEGER DEFAULT 0,
       todayReviewCount INTEGER DEFAULT 0,
-      consecutiveMastered INTEGER DEFAULT 0
+      consecutiveMastered INTEGER DEFAULT 0,
+      forgottenCount INTEGER DEFAULT 0,
+      lastForgottenAt TEXT,
+      dailyTarget INTEGER DEFAULT 1,
+      dailyCompleted INTEGER DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS review_logs (
@@ -67,6 +71,13 @@ export async function initStore(): Promise<void> {
       reminderTime TEXT DEFAULT '09:00'
     );
   `)
+
+  // Migration: add new columns for existing databases
+  try { db.run('ALTER TABLE progress ADD COLUMN forgottenCount INTEGER DEFAULT 0') } catch (_) {}
+  try { db.run('ALTER TABLE progress ADD COLUMN lastForgottenAt TEXT') } catch (_) {}
+  try { db.run('ALTER TABLE progress ADD COLUMN dailyTarget INTEGER DEFAULT 1') } catch (_) {}
+  try { db.run('ALTER TABLE progress ADD COLUMN dailyCompleted INTEGER DEFAULT 0') } catch (_) {}
+
   saveToDisk()
 
   const result = db.exec('SELECT COUNT(*) as count FROM problems')
@@ -225,14 +236,14 @@ function seedData(): void {
   }
 
   const stmts = db.prepare('INSERT INTO problems (id, leetcodeNumber, title, difficulty, category, url, isCustom) VALUES (?, ?, ?, ?, ?, ?, ?)')
-  const progStmt = db.prepare('INSERT INTO progress (id, problemId, level, lastReviewedAt, nextReviewAt, reviewCount, todayReviewCount, consecutiveMastered) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+  const progStmt = db.prepare('INSERT INTO progress (id, problemId, level, lastReviewedAt, nextReviewAt, reviewCount, todayReviewCount, consecutiveMastered, forgottenCount, lastForgottenAt, dailyTarget, dailyCompleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
 
   db.run('BEGIN')
   hot100.forEach((p, i) => {
     const id = i + 1
     const slug = slugMap[p.title] || p.title.toLowerCase().replace(/\s+/g, '-')
     stmts.run([id, p.leetcodeNumber, p.title, p.difficulty, p.category, `https://leetcode.cn/problems/${slug}`, 0])
-    progStmt.run([id, id, 'not_started', null, null, 0, 0, 0])
+    progStmt.run([id, id, 'not_started', null, null, 0, 0, 0, 0, null, 1, 0])
   })
   db.run("INSERT OR IGNORE INTO settings (id, dailyTotal, dailyNew, autoLaunch, reminderTime) VALUES (1, 5, 2, 1, '09:00')")
   db.run('COMMIT')
@@ -256,6 +267,7 @@ export interface ProblemData {
 export interface ProgressData {
   id: number; problemId: number; level: 'not_started' | 'forgotten' | 'partial' | 'hesitant' | 'mastered'
   lastReviewedAt: string | null; nextReviewAt: string | null; reviewCount: number; todayReviewCount: number; consecutiveMastered: number
+  forgottenCount: number; lastForgottenAt: string | null; dailyTarget: number; dailyCompleted: number
 }
 
 export interface ReviewLogData {
@@ -301,11 +313,11 @@ export function writeData(data: AppData): void {
   db.run('DELETE FROM settings')
 
   const insP = db.prepare('INSERT INTO problems (id, leetcodeNumber, title, difficulty, category, url, isCustom) VALUES (?, ?, ?, ?, ?, ?, ?)')
-  const insPr = db.prepare('INSERT INTO progress (id, problemId, level, lastReviewedAt, nextReviewAt, reviewCount, todayReviewCount, consecutiveMastered) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+  const insPr = db.prepare('INSERT INTO progress (id, problemId, level, lastReviewedAt, nextReviewAt, reviewCount, todayReviewCount, consecutiveMastered, forgottenCount, lastForgottenAt, dailyTarget, dailyCompleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
   const insL = db.prepare('INSERT INTO review_logs (id, problemId, date, oldLevel, newLevel, reviewedAt) VALUES (?, ?, ?, ?, ?, ?)')
 
   for (const p of data.problems) insP.run([p.id, p.leetcodeNumber, p.title, p.difficulty, p.category, p.url, p.isCustom ? 1 : 0])
-  for (const p of data.progress) insPr.run([p.id, p.problemId, p.level, p.lastReviewedAt, p.nextReviewAt, p.reviewCount, p.todayReviewCount, p.consecutiveMastered])
+  for (const p of data.progress) insPr.run([p.id, p.problemId, p.level, p.lastReviewedAt, p.nextReviewAt, p.reviewCount, p.todayReviewCount, p.consecutiveMastered, p.forgottenCount, p.lastForgottenAt, p.dailyTarget, p.dailyCompleted])
   for (const l of data.reviewLogs) insL.run([l.id, l.problemId, l.date, l.oldLevel, l.newLevel, l.reviewedAt])
   db.run('INSERT OR REPLACE INTO settings (id, dailyTotal, dailyNew, autoLaunch, reminderTime) VALUES (1, ?, ?, ?, ?)', [
     data.settings.dailyTotal, data.settings.dailyNew, data.settings.autoLaunch ? 1 : 0, data.settings.reminderTime
